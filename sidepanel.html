@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TA Scraper</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --bg:          #0e0f11;
+            --surface:     #16181c;
+            --surface2:    #1c1f25;
+            --border:      #252830;
+            --accent:      #00d4aa;
+            --accent-dim:  rgba(0,212,170,0.10);
+            --accent-glow: rgba(0,212,170,0.35);
+            --text:        #e2e5ea;
+            --muted:       #656b78;
+            --dim:         #3e4350;
+            --danger:      #ff5555;
+            --warning:     #ffb347;
+            --info:        #6ab0f5;
+            --purple:      #c9a0ff;
+        }
+
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        html, body { height:100%; background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; }
+        body { display:flex; flex-direction:column; min-width:320px; }
+
+        /* ── Header ── */
+        .header {
+            background:var(--surface); border-bottom:1px solid var(--border);
+            padding:13px 16px 12px; display:flex; align-items:center; gap:9px; flex-shrink:0;
+        }
+        .logo { width:22px; height:22px; background:var(--accent); border-radius:5px;
+            display:flex; align-items:center; justify-content:center; font-size:12px;
+            box-shadow:0 0 10px var(--accent-glow); flex-shrink:0; }
+        .header-title { font-family:'Space Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+        .header-badge { margin-left:auto; font-family:'Space Mono',monospace; font-size:9px; color:var(--accent);
+            border:1px solid rgba(0,212,170,.25); padding:2px 7px; border-radius:3px; letter-spacing:.08em; }
+
+        /* ── Body ── */
+        .body { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:13px 13px 0; }
+
+        /* ── Field ── */
+        .field-label { font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+
+        .url-input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+            padding:8px 10px; font-family:'Space Mono',monospace; font-size:9.5px; color:var(--text);
+            outline:none; transition:border-color .15s, box-shadow .15s; line-height:1.5; }
+        .url-input::placeholder { color:var(--dim); }
+        .url-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+
+        /* ── Resume banner ── */
+        .resume-banner {
+            background: #141a17;
+            border: 1px solid rgba(0,212,170,0.3);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: none; /* shown via JS */
+            flex-direction: column;
+            gap: 8px;
+        }
+        .resume-banner.visible { display: flex; }
+        .resume-top { display:flex; align-items:center; gap:9px; }
+        .resume-icon { font-size:18px; flex-shrink:0; }
+        .resume-info { flex:1; min-width:0; }
+        .resume-title { font-size:11px; font-weight:600; color:var(--accent); }
+        .resume-sub { font-family:'Space Mono',monospace; font-size:9.5px; color:var(--muted); margin-top:2px;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .resume-actions { display:flex; gap:7px; }
+        .btn-resume, .btn-fresh {
+            flex:1; padding:7px 0; border:none; border-radius:5px; cursor:pointer;
+            font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+            letter-spacing:.08em; text-transform:uppercase; transition:background .15s;
+        }
+        .btn-resume { background:var(--accent); color:#081210; }
+        .btn-resume:hover { background:#00eabb; }
+        .btn-fresh  { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+        .btn-fresh:hover  { color:var(--danger); border-color:var(--danger); }
+
+        /* ── Stats ── */
+        .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; }
+        .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:9px 10px; }
+        .stat-label { font-size:9px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+        .stat-value { font-family:'Space Mono',monospace; font-size:16px; font-weight:700; color:var(--text); line-height:1; }
+        .stat-value.accent { color:var(--accent); }
+
+        /* ── Progress ── */
+        .progress-section { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:11px 12px; }
+        .progress-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+        .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; transition:background .2s; }
+        .status-dot.idle    { background:var(--dim); }
+        .status-dot.running { background:var(--warning); box-shadow:0 0 7px rgba(255,179,71,.5); animation:pulse 1s infinite; }
+        .status-dot.success { background:var(--accent); box-shadow:0 0 7px var(--accent-glow); }
+        .status-dot.error   { background:var(--danger); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+        .status-label { font-size:11px; font-weight:600; color:var(--text); flex:1; min-width:0;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pct-label { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); flex-shrink:0; }
+
+        .track-wrap { margin-top:0; }
+        .track-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+        .track-label { font-size:9px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+        .track-sub   { font-family:'Space Mono',monospace; font-size:9px; color:var(--dim); }
+        .progress-track { height:4px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:8px; }
+        .progress-fill  { height:100%; border-radius:4px; transition:width .4s ease; width:0%; }
+        .progress-fill.outer { background:var(--accent); }
+        .progress-fill.inner { background:var(--info); }
+        .progress-fill.indeterminate { width:35%; animation:sweep 1.3s infinite ease-in-out; }
+        @keyframes sweep { 0%{transform:translateX(-200%)} 100%{transform:translateX(400%)} }
+
+        /* ── Log ── */
+        .log-section { flex:1; display:flex; flex-direction:column; min-height:0; }
+        .log-header  { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+        .log-clear   { font-size:9px; color:var(--muted); cursor:pointer; font-family:'Space Mono',monospace;
+            letter-spacing:.06em; background:none; border:none; padding:0; }
+        .log-clear:hover { color:var(--danger); }
+        .log-box { background:#0a0b0d; border:1px solid var(--border); border-radius:7px; padding:9px;
+            flex:1; overflow-y:auto; min-height:180px; max-height:calc(100vh - 460px);
+            display:flex; flex-direction:column; gap:1px; scroll-behavior:smooth; }
+        .log-empty { font-family:'Space Mono',monospace; font-size:10px; color:var(--dim); font-style:italic; padding:3px 0; }
+        .log-entry  { display:flex; gap:7px; align-items:baseline; padding:2px 0; animation:fadeIn .12s ease; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(2px)} to{opacity:1;transform:none} }
+        .log-ts   { font-family:'Space Mono',monospace; font-size:9px; color:var(--dim); flex-shrink:0; line-height:1.6; }
+        .log-icon { font-size:11px; flex-shrink:0; line-height:1.5; }
+        .log-msg  { font-family:'Space Mono',monospace; font-size:10px; line-height:1.6; word-break:break-word; }
+        .log-msg.info    { color:var(--muted); }
+        .log-msg.success { color:var(--accent); }
+        .log-msg.warn    { color:var(--warning); }
+        .log-msg.error   { color:var(--danger); }
+        .log-msg.fetch   { color:var(--info); }
+        .log-msg.data    { color:var(--purple); }
+        /* milestone banner lines (── N / M records done ──) */
+        .log-entry.milestone .log-msg  { color:var(--accent); font-weight:700; }
+        .log-entry.milestone .log-icon { color:var(--accent); }
+
+        /* ── Bot alert ── */
+        .bot-alert { background:#1a0f0f; border:1px solid rgba(255,85,85,.35); border-radius:7px;
+            padding:10px 12px; display:none; gap:9px; align-items:flex-start; }
+        .bot-alert.visible { display:flex; }
+        .bot-alert-body { flex:1; }
+        .bot-alert-title { font-size:11px; font-weight:600; color:var(--danger); }
+        .bot-alert-sub   { font-family:'Space Mono',monospace; font-size:9.5px; color:var(--muted); margin-top:3px; line-height:1.5; }
+
+        /* ── Button wrap ── */
+        .btn-wrap { padding:11px 13px; background:var(--bg); border-top:1px solid var(--border); flex-shrink:0; }
+        .btn-clear { width:100%; padding:8px 0; background:transparent; border:1px solid var(--border);
+            border-radius:7px; color:var(--muted); font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+            letter-spacing:.08em; text-transform:uppercase; cursor:pointer; margin-bottom:7px;
+            transition:border-color .15s, color .15s; display:none; }
+        .btn-clear.visible { display:block; }
+        .btn-clear:hover { border-color:var(--danger); color:var(--danger); }
+
+        .btn-row  { display:flex; gap:8px; }
+        .btn-start { flex:1; padding:11px 0; background:var(--accent); color:#081210; border:none;
+            border-radius:7px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700;
+            letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; gap:8px;
+            transition:background .15s, box-shadow .15s, transform .1s; }
+        .btn-start:hover:not(:disabled) { background:#00ebbc; box-shadow:0 0 18px var(--accent-glow); }
+        .btn-start:active:not(:disabled) { transform:scale(.98); }
+        .btn-start:disabled { background:var(--surface2); color:var(--dim); cursor:not-allowed; }
+
+        .btn-stop { flex:0 0 80px; padding:11px 0; background:transparent; border:1px solid var(--danger);
+            border-radius:7px; color:var(--danger); font-family:'Space Mono',monospace; font-size:11px;
+            font-weight:700; letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; gap:6px;
+            transition:background .15s, color .15s; }
+        .btn-stop:hover:not(:disabled) { background:rgba(255,85,85,.12); }
+        .btn-stop:disabled { opacity:.3; cursor:not-allowed; border-color:var(--border); color:var(--dim); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="logo">⚡</div>
+    <div class="header-title">TA Scraper</div>
+    <div class="header-badge">v3.0</div>
+</div>
+
+<div class="body">
+
+    <!-- URL -->
+    <div>
+        <div class="field-label">Target URL</div>
+        <input id="urlInput" type="text" class="url-input" placeholder="https://www.tripadvisor.com/FindRestaurants…" />
+    </div>
+
+    <!-- Resume banner (shown when saved session matches URL) -->
+    <div class="resume-banner" id="resumeBanner">
+        <div class="resume-top">
+            <div class="resume-icon">💾</div>
+            <div class="resume-info">
+                <div class="resume-title">Saved session found</div>
+                <div class="resume-sub" id="resumeSub">Loading…</div>
+            </div>
+        </div>
+        <div class="resume-actions">
+            <button class="btn-resume" id="resumeBtn">▶ Resume</button>
+            <button class="btn-fresh"  id="freshBtn">↺ Start Fresh</button>
+        </div>
+    </div>
+
+    <!-- Bot alert -->
+    <div class="bot-alert" id="botAlert">
+        <div style="font-size:20px">🤖</div>
+        <div class="bot-alert-body">
+            <div class="bot-alert-title">Bot check detected</div>
+            <div class="bot-alert-sub" id="botAlertSub">Progress was saved. Visit TripAdvisor manually, solve the captcha, then click Resume.</div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-label">Records</div>
+            <div class="stat-value accent" id="statRecords">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Offset</div>
+            <div class="stat-value" id="statBatch">—</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total</div>
+            <div class="stat-value" id="statTotal">—</div>
+        </div>
+    </div>
+
+    <!-- Progress bars -->
+    <div class="progress-section">
+        <div class="progress-header">
+            <div class="status-dot idle" id="statusDot"></div>
+            <div class="status-label" id="statusLabel">Idle</div>
+            <div class="pct-label" id="pctLabel"></div>
+        </div>
+        <div class="track-wrap">
+            <div class="track-header">
+                <div class="track-label">Overall</div>
+                <div class="track-sub" id="outerSub"></div>
+            </div>
+            <div class="progress-track"><div class="progress-fill outer" id="outerFill"></div></div>
+            <div class="track-header">
+                <div class="track-label">Current page</div>
+                <div class="track-sub" id="innerSub">—</div>
+            </div>
+            <div class="progress-track"><div class="progress-fill inner" id="innerFill"></div></div>
+        </div>
+    </div>
+
+    <!-- Live log -->
+    <div class="log-section">
+        <div class="log-header">
+            <div class="field-label" style="margin-bottom:0">Live Log</div>
+            <button class="log-clear" id="clearBtn">CLEAR</button>
+        </div>
+        <div class="log-box" id="logBox">
+            <div class="log-empty" id="logEmpty">Waiting for scraper to start…</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="btn-wrap">
+    <button class="btn-clear" id="clearProgressBtn">🗑 Clear saved progress &amp; restart</button>
+    <div class="btn-row">
+        <button class="btn-start" id="startBtn"><span>⚡</span> Start</button>
+        <button class="btn-stop"  id="stopBtn" disabled><span>⛔</span> Stop</button>
+    </div>
+</div>
+
+<script src="sidepanel.js"></script>
+</body>
+</html>
