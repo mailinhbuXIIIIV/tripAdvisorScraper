@@ -133,29 +133,47 @@ async function rapidFetch(url) {
 }
 
 function parseJsonLd(html, offset) {
-    const pattern = /<script type="application\/ld\+json">(.*?"@type":"ItemList".*?)<\/script>/s;
-    const match = html.match(pattern);
-    if (!match) return [];
+    let items = [];
+
     try {
-        const json = JSON.parse(match[1]);
-        return json.itemListElement.map((el, i) => {
-            const it = el.item;
-            const addr = it.address || {};
-            return {
-                index: offset + i + 1,
-                name: it.name || 'N/A',
-                rating: it.aggregateRating?.ratingValue || 'N/A',
-                reviews: it.aggregateRating?.reviewCount || 0,
-                price: it.priceRange || 'N/A',
-                lat: it.geo?.latitude || 'N/A',
-                lng: it.geo?.longitude || 'N/A',
-                street: addr.streetAddress || 'N/A',
-                locality: addr.addressLocality || 'N/A',
-                country: addr.addressCountry || 'N/A',
-                url: it.url || 'N/A'
-            };
-        });
-    } catch { return []; }
+        // 1. Target the specific div you identified
+        // We use a regex that looks for the data-automation attribute and captures the script content inside
+        const divPattern = /data-automation="restaurant-list-jsonld">.*?<script [^>]*>([\s\S]*?)<\/script>/i;
+        const match = html.match(divPattern);
+
+        if (match && match[1]) {
+            let jsonString = match[1].trim();
+
+            // 2. Parse the JSON (JSON.parse handles \u002F automatically)
+            const data = JSON.parse(jsonString);
+
+            if (data && data.itemListElement) {
+                items = data.itemListElement.map((el, i) => {
+                    const it = el.item || {};
+                    const addr = it.address || {};
+                    return {
+                        index: offset + i + 1,
+                        name: it.name || 'N/A',
+                        rating: it.aggregateRating?.ratingValue || "N/A",
+                        reviews: it.aggregateRating?.reviewCount || 0,
+                        price: it.priceRange || 'N/A',
+                        lat: it.geo?.latitude || 'N/A',
+                        lng: it.geo?.longitude || 'N/A',
+                        street: addr.streetAddress || 'N/A',
+                        locality: addr.addressLocality || 'N/A',
+                        country: addr.addressCountry || 'N/A',
+                        url: it.url ? it.url.replace(/\\u002F/g, '/') : 'N/A'
+                    };
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Extraction Error:", e.message);
+        // Log a snippet of the HTML for debugging if it fails
+        console.log("HTML Snippet:", html.substring(0, 500));
+    }
+
+    return items;
 }
 
 function isBot(html) {
